@@ -12,9 +12,13 @@ local rz = {-0, -180}
 -- 末端补偿状态
 local rz_status = 1
 -- 水平运动加速度
-local a_horizontal = {a = 100}
+local a_horizontal = {
+    a = 100
+}
 -- 垂直下降运动加速度
-local a_vertical = {a = 2}
+local a_vertical = {
+    a = 2
+}
 
 --- 字节流转浮点数
 -- 将四个字节转换为浮点数
@@ -81,27 +85,48 @@ end
 ---@param a3 table 加速度（取值范围0~100）
 ---@return number 0为可以运动，1为不能运动
 function performMovement(M2, a3, offset)
-    printPoseAndStatus({pose = M2})
+    printPoseAndStatus({
+        pose = M2
+    })
     -- print(CheckMovJ({pose=M2}))
     -- print(CheckMovL({pose=M2}))
     -- 如果可以直线运动，则直线
-    if CheckMovL({pose = M2}) == 0 then
+    if CheckMovL({
+        pose = M2
+    }) == 0 then
         -- 获取第六个关节的角度
         local joint = GetAngle().joint[6]
         print("joint:", joint)
         -- 如果需要j6关节偏移
         if offset then
+            -- 先检测当前位置，防止碰撞摄像头杆
+            local x_now = GetPose().pose[1]
+            local y_now = GetPose().pose[2]
+            -- 危险位置，需要撤步以避开
+            if x_now < 310 and y_now < -100 then
+                print("危险位置")
+                RelMovJUser({20, 20, 5, 0, 0, 0})
+            end
             -- 关节j6超出安全区域
-            if joint > 100 or joint < -100 then
+            if joint > 200 then
+                -- 执行偏移关节运动
+                RelJointMovJ({0, 0, 0, 0, 0, -joint}, a3)
+            elseif joint > 100 or joint < -100 then
                 -- 执行偏移关节运动
                 RelJointMovJ({0, 0, 0, 0, 0, -joint}, a3)
             end
         end
-        MovL({ pose = M2}, a3)
+        MovL({
+            pose = M2
+        }, a3)
         return 0
         -- 如果不能直线运动，则关节运动
-    elseif CheckMovJ({pose = M2}) == 0 then
-        MovJ({pose = M2}, a3)
+    elseif CheckMovJ({
+        pose = M2
+    }) == 0 then
+        MovJ({
+            pose = M2
+        }, a3)
         return 0
     end
     return 1
@@ -116,10 +141,10 @@ function calculateParams(M2, a2)
     local M3 = {table.unpack(M2)}
     -- 地理围栏
     -- 如果x<300, y<30，说明靠近机械臂，需要rz为0
-    if M3[1] < 300 and M3[2] < 30 then
+    if M3[1] < 300 and M3[2] < 3 then
         rz_status = 1
         -- 如果x>365, y<30，说明远离机械臂，靠近外缘，需要rz为180
-    elseif M3[1] > 365 and M3[2] < 30 then
+    elseif M3[1] > 365 and M3[2] < 3 then
         rz_status = 2
     end
     -- 末端补偿
@@ -156,7 +181,7 @@ function move(res)
     K2 = {P2.pose[1], P2.pose[2], trans_height, -180, 0, -90}
     -- 如果是黑棋，对棋盘中心区域做高度补偿，降低0.3mm
     if res[3] == 0 and M1[1] < 370 and M1[1] > 300 then
-        M1[3] = M1[3] - 0.3
+        M1[3] = M1[3] - 0
         -- 应当再对靠近棋筐片区加大补偿
     end
     -- 去目标点上空
@@ -180,7 +205,7 @@ function move(res)
         if calculateParams(K1, a_horizontal) == 1 then
             return "1"
         end
-    -- 如果是白色，前往白棋筐
+        -- 如果是白色，前往白棋筐
     elseif res[3] == 1 then
         if calculateParams(K2, a_horizontal) == 1 then
             return "1"
