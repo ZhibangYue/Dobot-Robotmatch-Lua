@@ -1,6 +1,6 @@
 -- 此文件仅用于定义变量和子函数。
 -- 下降高度
-local get_height = 73.7
+local get_height = 74.3
 -- 目标点上空高度
 local trans_height = 100.02
 -- x方向末端补偿
@@ -17,8 +17,11 @@ local a_horizontal = {
 }
 -- 垂直下降运动加速度
 local a_vertical = {
-    a = 2
+    a = 100
 }
+-- 接收数据等待时间
+local wait_time = 3
+
 
 --- 字节流转浮点数
 -- 将四个字节转换为浮点数
@@ -50,7 +53,13 @@ end
 ---@return table 位置和颜色，res[1]为x坐标，res[2]为y坐标，res[3]为颜色
 function rec(socket)
     -- 接收数据
-    local err, recBuf = TCPRead(socket, 30, "table")
+    local err, recBuf = TCPRead(socket, wait_time, "table")
+    print(err)
+    -- 发生异常，直接返回
+    if err ~= 0 then
+        TCPWrite(socket, 0)
+        return 0
+    end
     -- 执行数据转换
     local res = exec(recBuf)
     return res
@@ -104,14 +113,10 @@ function performMovement(M2, a3, offset)
             local y_now = GetPose().pose[2]
             -- 危险位置，需要撤步以避开
             if x_now < 310 and y_now < -100 then
-                print("危险位置")
                 RelMovJUser({20, 20, 5, 0, 0, 0})
             end
             -- 关节j6超出安全区域
-            if joint > 200 then
-                -- 执行偏移关节运动
-                RelJointMovJ({0, 0, 0, 0, 0, -joint}, a3)
-            elseif joint > 100 or joint < -100 then
+            if joint > 100 or joint < -100 then
                 -- 执行偏移关节运动
                 RelJointMovJ({0, 0, 0, 0, 0, -joint}, a3)
             end
