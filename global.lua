@@ -1,6 +1,6 @@
 -- 此文件仅用于定义变量和子函数。
 -- 下降高度
-local get_height = 74.3
+local get_height = 73
 -- 目标点上空高度
 local trans_height = 100.02
 -- x方向末端补偿
@@ -17,10 +17,10 @@ local a_horizontal = {
 }
 -- 垂直下降运动加速度
 local a_vertical = {
-    a = 100
+    a = 18
 }
 -- 接收数据等待时间
-local wait_time = 3
+local wait_time = 2
 
 
 --- 字节流转浮点数
@@ -54,10 +54,8 @@ end
 function rec(socket)
     -- 接收数据
     local err, recBuf = TCPRead(socket, wait_time, "table")
-    print(err)
     -- 发生异常，直接返回
     if err ~= 0 then
-        TCPWrite(socket, 0)
         return 0
     end
     -- 执行数据转换
@@ -76,7 +74,7 @@ end
 function push()
     DO(9, OFF)
     DO(11, ON)
-    Wait(50)
+    Wait(55)
 end
 
 --- 打印位置和状态
@@ -94,9 +92,9 @@ end
 ---@param a3 table 加速度（取值范围0~100）
 ---@return number 0为可以运动，1为不能运动
 function performMovement(M2, a3, offset)
-    printPoseAndStatus({
-        pose = M2
-    })
+  --  printPoseAndStatus({
+  --      pose = M2
+  --  })
     -- print(CheckMovJ({pose=M2}))
     -- print(CheckMovL({pose=M2}))
     -- 如果可以直线运动，则直线
@@ -105,14 +103,13 @@ function performMovement(M2, a3, offset)
     }) == 0 then
         -- 获取第六个关节的角度
         local joint = GetAngle().joint[6]
-        print("joint:", joint)
         -- 如果需要j6关节偏移
         if offset then
             -- 先检测当前位置，防止碰撞摄像头杆
             local x_now = GetPose().pose[1]
             local y_now = GetPose().pose[2]
             -- 危险位置，需要撤步以避开
-            if x_now < 310 and y_now < -100 then
+            if x_now < 310 and y_now < -140 then
                 RelMovJUser({20, 20, 5, 0, 0, 0})
             end
             -- 关节j6超出安全区域
@@ -146,17 +143,17 @@ function calculateParams(M2, a2)
     local M3 = {table.unpack(M2)}
     -- 地理围栏
     -- 如果x<300, y<30，说明靠近机械臂，需要rz为0
-    if M3[1] < 300 and M3[2] < 3 then
+    if M3[1] < 300 and M3[2] < 20 then
         rz_status = 1
         -- 如果x>365, y<30，说明远离机械臂，靠近外缘，需要rz为180
-    elseif M3[1] > 365 and M3[2] < 3 then
+    elseif M3[1] > 365 and M3[2] < 20 then
         rz_status = 2
     end
     -- 末端补偿
     M3[1] = M3[1] + dx[rz_status]
     M3[2] = M3[2] + dy[rz_status]
     M3[6] = rz[rz_status]
-    print(rz_status)
+    -- print("status",rz_status)
     -- 尝试移动，如果失败则切换rz状态，末端旋转
     if performMovement(M3, a2, false) == 1 then
         M3[1] = M3[1] + dx[3 - rz_status] * 2
@@ -185,9 +182,14 @@ function move(res)
     K1 = {P1.pose[1], P1.pose[2], trans_height, -180, 0, -90}
     K2 = {P2.pose[1], P2.pose[2], trans_height, -180, 0, -90}
     -- 如果是黑棋，对棋盘中心区域做高度补偿，降低0.3mm
-    if res[3] == 0 and M1[1] < 370 and M1[1] > 300 then
-        M1[3] = M1[3] - 0
-        -- 应当再对靠近棋筐片区加大补偿
+    if M1[1]<233 and M1[2]>-100 and M1[2]<17 then
+    M1[1] = M1[1] + 1.5
+    M1[2] = M1[2] - 1.5
+    print("补偿")
+    elseif M1[1]<233 and M1[2]<-100 then
+    M1[1] = M1[1] + 1
+    M1[2] = M1[2] - 1
+    print("补偿2")
     end
     -- 去目标点上空
     if calculateParams(M2, a_horizontal) == 1 then
@@ -201,7 +203,7 @@ function move(res)
     get()
     -- 抬升至上空
     if calculateParams(M2, {
-        a = 6
+        a = 20
     }) == 1 then
         return "1"
     end
