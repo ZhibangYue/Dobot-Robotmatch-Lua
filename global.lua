@@ -4,9 +4,9 @@ local get_height = 73
 -- 目标点上空高度
 local trans_height = 100.02
 -- x方向末端补偿
-local dx = {61.1367, -61.1367}
+local dx = {-61.1367, 61.1367}
 -- y方向末端补偿
-local dy = {-2.3016, 2.3016}
+local dy = {2.3016, -2.3016}
 -- rz方向末端补偿
 local rz = {-0, -180}
 -- 末端补偿状态
@@ -21,7 +21,6 @@ local a_vertical = {
 }
 -- 接收数据等待时间
 local wait_time = 2
-
 
 --- 字节流转浮点数
 -- 将四个字节转换为浮点数
@@ -92,9 +91,9 @@ end
 ---@param a3 table 加速度（取值范围0~100）
 ---@return number 0为可以运动，1为不能运动
 function performMovement(M2, a3, offset)
-  --  printPoseAndStatus({
-  --      pose = M2
-  --  })
+    --  printPoseAndStatus({
+    --      pose = M2
+    --  })
     -- print(CheckMovJ({pose=M2}))
     -- print(CheckMovL({pose=M2}))
     -- 如果可以直线运动，则直线
@@ -143,12 +142,7 @@ function calculateParams(M2, a2)
     local M3 = {table.unpack(M2)}
     -- 地理围栏
     -- 如果x<300, y<30，说明靠近机械臂，需要rz为0
-    if M3[1] < 300 and M3[2] < 20 then
-        rz_status = 1
-        -- 如果x>365, y<30，说明远离机械臂，靠近外缘，需要rz为180
-    elseif M3[1] > 365 and M3[2] < 20 then
-        rz_status = 2
-    end
+
     -- 末端补偿
     M3[1] = M3[1] + dx[rz_status]
     M3[2] = M3[2] + dy[rz_status]
@@ -182,15 +176,15 @@ function move(res)
     K1 = {P1.pose[1], P1.pose[2], trans_height, -180, 0, -90}
     K2 = {P2.pose[1], P2.pose[2], trans_height, -180, 0, -90}
     -- 如果是黑棋，对棋盘中心区域做高度补偿，降低0.3mm
-    if M1[1]<233 and M1[2]>-100 and M1[2]<17 then
-    M1[1] = M1[1] + 1.5
-    M1[2] = M1[2] - 1.5
-    print("补偿")
-    elseif M1[1]<233 and M1[2]<-100 then
-    M1[1] = M1[1] + 1
-    M1[2] = M1[2] - 1
-    print("补偿2")
-    end
+    -- if M1[1]<233 and M1[2]>-100 and M1[2]<17 then
+    -- M1[1] = M1[1] + 1.5
+    -- M1[2] = M1[2] - 1.5
+    -- print("补偿")
+    -- elseif M1[1]<233 and M1[2]<-100 then
+    -- M1[1] = M1[1] + 1
+    -- M1[2] = M1[2] - 1
+    -- print("补偿2")
+    -- end
     -- 去目标点上空
     if calculateParams(M2, a_horizontal) == 1 then
         return "1"
